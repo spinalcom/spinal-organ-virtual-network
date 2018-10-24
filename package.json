@@ -1,0 +1,20 @@
+{
+  "name": "spinal-organ-virtual-network",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+
+  },
+  "author": "SpinalCom",
+  "license": "SpinalCom Free Software License Agreement",
+  "dependencies": {
+    "fast-csv": "^2.4.1",
+    "q": "^1.5.1",
+    "spinal-lib-forgefile": "git+https://github.com/spinalcom/spinal-lib-forgefile.git",
+    "spinal-models-building-elements": "git+https://github.com/spinalcom/spinal-models-building-elements.git",
+    "spinal-models-bmsNetwork": "git+https://github.com/spinalcom/spinal-models-bmsNetwork.git",
+    "spinal-models-timeSeries": "git+https://github.com/spinalcom/spinal-models-timeSeries.git",
+    "spinalcore": "^2.1.0"
+  }
+}
