@@ -1,9 +1,9 @@
 module.exports = {
   networkConnector: {
-    networkName: 'MyNetwork21',
-    appName: 'MyApp21',
+    networkName: 'VirtualNetwork',
+    appName: 'VirtualNetworkContext',
     type: 'MyFakeProtocol',
-    path: '/myGraph',
+    path: '/VirtualNetwork',
     virtualDevices: 5,
     endpointsPerDevice: 3,
     updateInterval: 1000
@@ -14,5 +14,8 @@ module.exports = {
     host: 'localhost',
     port: 7777,
     protocol: 'http'
+  },
+  file: {
+    path: '/__users__/admin/s'
   }
 }
