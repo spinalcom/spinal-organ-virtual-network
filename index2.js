@@ -194,7 +194,7 @@ let buildNetwork = async function(_graph) {
                 var deviceChildren = deviceNode.getChildren(["hasBeenLoaded"]);
 
                 
-                await addItemInsidePromise(promises2,deviceChildren);
+                addItemInsidePromise(promises2,deviceChildren);
               
 
               }

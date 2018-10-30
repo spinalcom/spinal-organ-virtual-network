@@ -2,15 +2,21 @@ let organType = typeof window === "undefined" ? global : window;
 
 var Q = require("q");
 var spinalCore = require("spinal-core-connectorjs");
-require("spinal-lib-forgefile");
+// require("spinal-lib-forgefile");
 var config = require("./config");
 
-var SpinalDevice = require("spinal-models-bmsNetwork").SpinalDevice;
-var SpinalEndpoint = require("spinal-models-bmsNetwork").SpinalEndpoint;
-var SpinalNetwork = require("spinal-models-bmsNetwork").SpinalNetwork;
-var TimeSeries = require("spinal-models-timeSeries").TimeSeries;
-
 var spinalgraph = require("spinalgraph");
+// var SpinalDevice = require("spinal-models-bmsNetwork").SpinalDevice;
+// var SpinalEndpoint = require("spinal-models-bmsNetwork").SpinalEndpoint;
+// var SpinalNetwork = require("spinal-models-bmsNetwork").SpinalNetwork;
+
+const {
+  SpinalDevice,
+  SpinalEndpoint,
+  SpinalNetwork
+} = require("spinal-models-bmsNetwork");
+
+var TimeSeries = require("spinal-models-timeSeries").TimeSeries;
 
 String.prototype.hashCode = function() {
   var hash = 0,
@@ -72,28 +78,35 @@ let getGraph = _file => {
  */
 let createOrGetContext = async function(_graph) {
   return new Promise(function(resolve, reject) {
-    _graph.getChildren(["hasContext"]).then(el => {
-      for (var i = 0; i < el.length; i++) {
-        if (el[i].info.name.get() == config.networkConnector.appName) {
-          return resolve(el[i]);
-        }
+    _graph.getContext(config.networkConnector.appName).then(async context => {
+      if (typeof context !== "undefined") {
+        console.log("context found")
+        return resolve(context);
       }
 
-      let network = new SpinalNetwork(config.networkConnector);
+      console.log("context not found");
+      var network = new SpinalNetwork(config.networkConnector);
 
-      var virtualContext = new spinalgraph.SpinalContext(
+      let virtualContext = new spinalgraph.SpinalContext(
         "SpinalContext",
-        config.networkConnector.appName, 
+        config.networkConnector.appName,
         network
       );
 
-
-      _graph.addContext(virtualContext);
-      resolve(virtualContext);
+      try {
+        _graph.addContext(virtualContext);
+        virtualContext = await _graph.getContext(
+          config.networkConnector.appName
+        );
+        resolve(virtualContext);
+      } catch (e) {
+        reject(e);
+      }
     });
   });
 };
 
+//LoadFile
 spinalCore.load(conn, config.file.path, _file => {
   wait_for_endround(_file).then(() => {
     getGraph(_file).then(_graph => {
@@ -128,7 +141,11 @@ let createDevices = async function(
     deviceNode = DeviceDictionary[d.path.get().hashCode()];
 
     if (!deviceNode.hasRelation("hasBeenLoaded", 0)) {
-      deviceNode.addChild(new Model(), "hasBeenLoaded", 0);
+      deviceNode.addChild(
+        new Model({ type: "SpinalDevice" }),
+        "hasBeenLoaded",
+        0
+      );
     }
 
     var deviceChildren = await deviceNode.getChildren(["hasBeenLoaded"]);
@@ -172,7 +189,7 @@ let createEndpoints = async function(
         });
       }
 
-      DeviceEndpointDictionary[d.path.get().hashCode()].add_attr({
+      DeviceEndpointDictionary[d.path.get().hashCode()][0].add_attr({
         [hashedId]: endpointNode
       });
     }
@@ -190,73 +207,75 @@ let DeviceDictionary, EndpointDictionary;
 let buildNetwork = async function(_graph) {
   let networkNode = await createOrGetContext(_graph);
 
-  var configs = [];
+  console.log("networkNode", networkNode);
 
-  configs.push(
-    await Promise.resolve(new SpinalNetwork(config.networkConnector))
-  ); //
+  //   var configs = [];
 
-  // configs.push(await networkNode.getElement())
+  // //   configs.push(
+  // //     await Promise.resolve(new SpinalNetwork(config.networkConnector))
+  // //   ); //
 
-  if (!networkNode.hasRelation("hasBeenLoaded", 0)) {
-    networkNode.addChild(new Model(), "hasBeenLoaded", 0);
-    networkNode.addChild(new Model(), "hasBeenLoaded", 0);
-  }
+  //   configs.push(await networkNode.getElement());
 
-  var child = await networkNode.getChildren(["hasBeenLoaded"]);
+  //   if (!networkNode.hasRelation("hasBeenLoaded", 0)) {
+  //     networkNode.addChild(new Model(), "hasBeenLoaded", 0);
+  //     networkNode.addChild(new Model(), "hasBeenLoaded", 0);
+  //   }
 
-  configs.push(await child[0].getElement());
-  configs.push(await child[1].getElement());
+  //   var child = await networkNode.getChildren(["hasBeenLoaded"]);
 
-  let DeviceEndpointDictionary = {};
+  //   configs.push(await child[0].getElement());
+  //   configs.push(await child[1].getElement());
 
-  let network = configs[0];
-  DeviceDictionary = configs[1];
-  EndpointDictionary = configs[2];
+  //   let DeviceEndpointDictionary = {};
 
-  let containers = await network.discover();
+  //   let network = configs[0];
+  //   DeviceDictionary = configs[1];
+  //   EndpointDictionary = configs[2];
 
-  //createDevices
+  //   let containers = await network.discover();
 
-  var dictionaries = await createDevices(
-    networkNode,
-    containers,
-    DeviceDictionary
-  );
+  //   //createDevices
 
-  let cpt = 0;
+  //   var dictionaries = await createDevices(
+  //     networkNode,
+  //     containers,
+  //     DeviceDictionary
+  //   );
 
-  for (var i = 0; i < containers.length; i++) {
-    let d = containers[i].device;
+  //   let cpt = 0;
 
-    if (typeof DeviceDictionary[d.path.get().hashCode()] !== "undefined") {
-      DeviceEndpointDictionary[d.path.get().hashCode()] = dictionaries[cpt++];
-    }
-  }
+  //   for (var i = 0; i < containers.length; i++) {
+  //     let d = containers[i].device;
 
-  let toSubscribe = [];
+  //     if (typeof DeviceDictionary[d.path.get().hashCode()] !== "undefined") {
+  //       DeviceEndpointDictionary[d.path.get().hashCode()] = dictionaries[cpt++];
+  //     }
+  //   }
 
-  // iterate and add devices if they are not already stored
-  for (var i = 0; i < containers.length; i++) {
-    let d = containers[i].device;
+  //   let toSubscribe = [];
 
-    deviceNode = DeviceDictionary[d.path.get().hashCode()];
+  //   // iterate and add devices if they are not already stored
+  //   for (var i = 0; i < containers.length; i++) {
+  //     let d = containers[i].device;
 
-    // check if they are not stored
-    // TODO: check _attr_names instead of undefined type?
-    if (typeof d.path.get() !== "undefined") {
-      // add endpoints
+  //     deviceNode = DeviceDictionary[d.path.get().hashCode()];
 
-      toSubscribe = await createEndpoints(
-        d,
-        deviceNode,
-        containers,
-        DeviceEndpointDictionary,
-        EndpointDictionary,
-        i
-      );
+  //     // check if they are not stored
+  //     // TODO: check _attr_names instead of undefined type?
+  //     if (typeof d.path.get() !== "undefined") {
+  //       // add endpoints
 
-      // network.subscribe(toSubscribe, updateValues);
-    }
-  }
+  //       toSubscribe = await createEndpoints(
+  //         d,
+  //         deviceNode,
+  //         containers,
+  //         DeviceEndpointDictionary,
+  //         EndpointDictionary,
+  //         i
+  //       );
+
+  //       // network.subscribe(toSubscribe, updateValues);
+  //     }
+  // }
 };
