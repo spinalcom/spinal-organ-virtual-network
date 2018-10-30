@@ -77,14 +77,22 @@ let getGraph = _file => {
  * This function create a context VirtualNetwork if don't exist, get it if exist and return it;
  */
 let createOrGetContext = async function(_graph) {
-  return new Promise(function(resolve, reject) {
+  return new Promise(async (resolve, reject) => {
     _graph.getContext(config.networkConnector.appName).then(async context => {
       if (typeof context !== "undefined") {
-        console.log("context found")
         return resolve(context);
       }
 
-      console.log("context not found");
+      // /**** A supprimer */
+      // var contexts = await _graph.getChildren(["hasContext"]);
+
+      // for(var i = 0; i < contexts.length; i++) {
+      //   if(contexts[i].info.name.get() == config.networkConnector.appName) {
+      //     return resolve(contexts[i])
+      //   }
+      // }
+      // /*** Fin Suppression */
+
       var network = new SpinalNetwork(config.networkConnector);
 
       let virtualContext = new spinalgraph.SpinalContext(
@@ -107,7 +115,7 @@ let createOrGetContext = async function(_graph) {
 };
 
 //LoadFile
-spinalCore.load(conn, config.file.path, _file => {
+spinalCore.load(conn, config.file.path, (_file) => {
   wait_for_endround(_file).then(() => {
     getGraph(_file).then(_graph => {
       buildNetwork(_graph);
@@ -207,75 +215,112 @@ let DeviceDictionary, EndpointDictionary;
 let buildNetwork = async function(_graph) {
   let networkNode = await createOrGetContext(_graph);
 
-  console.log("networkNode", networkNode);
+  var configs = [];
 
-  //   var configs = [];
+  //   configs.push(
+  //     await Promise.resolve(new SpinalNetwork(config.networkConnector))
+  //   ); //
 
-  // //   configs.push(
-  // //     await Promise.resolve(new SpinalNetwork(config.networkConnector))
-  // //   ); //
+  configs.push(await networkNode.getElement());
 
-  //   configs.push(await networkNode.getElement());
+  if (!networkNode.hasRelation("hasBeenLoaded", 0)) {
+    networkNode.addChild(new Model(), "hasBeenLoaded", 0);
+    networkNode.addChild(new Model(), "hasBeenLoaded", 0);
+  }
 
-  //   if (!networkNode.hasRelation("hasBeenLoaded", 0)) {
-  //     networkNode.addChild(new Model(), "hasBeenLoaded", 0);
-  //     networkNode.addChild(new Model(), "hasBeenLoaded", 0);
-  //   }
+  var child = await networkNode.getChildren(["hasBeenLoaded"]);
 
-  //   var child = await networkNode.getChildren(["hasBeenLoaded"]);
+  configs.push(await child[0].getElement());
+  configs.push(await child[1].getElement());
 
-  //   configs.push(await child[0].getElement());
-  //   configs.push(await child[1].getElement());
+  let DeviceEndpointDictionary = {};
 
-  //   let DeviceEndpointDictionary = {};
+  let network = configs[0];
+  DeviceDictionary = configs[1];
+  EndpointDictionary = configs[2];
 
-  //   let network = configs[0];
-  //   DeviceDictionary = configs[1];
-  //   EndpointDictionary = configs[2];
+  let containers = await network.discover();
 
-  //   let containers = await network.discover();
+  //createDevices
 
-  //   //createDevices
+  var dictionaries = await createDevices(
+    networkNode,
+    containers,
+    DeviceDictionary
+  );
 
-  //   var dictionaries = await createDevices(
-  //     networkNode,
-  //     containers,
-  //     DeviceDictionary
-  //   );
+  let cpt = 0;
 
-  //   let cpt = 0;
+  for (var i = 0; i < containers.length; i++) {
+    let d = containers[i].device;
 
-  //   for (var i = 0; i < containers.length; i++) {
-  //     let d = containers[i].device;
+    if (typeof DeviceDictionary[d.path.get().hashCode()] !== "undefined") {
+      DeviceEndpointDictionary[d.path.get().hashCode()] = dictionaries[cpt++];
+    }
+  }
 
-  //     if (typeof DeviceDictionary[d.path.get().hashCode()] !== "undefined") {
-  //       DeviceEndpointDictionary[d.path.get().hashCode()] = dictionaries[cpt++];
-  //     }
-  //   }
+  let toSubscribe = [];
 
-  //   let toSubscribe = [];
+  // iterate and add devices if they are not already stored
+  for (var i = 0; i < containers.length; i++) {
+    let d = containers[i].device;
 
-  //   // iterate and add devices if they are not already stored
-  //   for (var i = 0; i < containers.length; i++) {
-  //     let d = containers[i].device;
+    deviceNode = DeviceDictionary[d.path.get().hashCode()];
 
-  //     deviceNode = DeviceDictionary[d.path.get().hashCode()];
+    // check if they are not stored
+    // TODO: check _attr_names instead of undefined type?
+    if (typeof d.path.get() !== "undefined") {
+      // add endpoints
 
-  //     // check if they are not stored
-  //     // TODO: check _attr_names instead of undefined type?
-  //     if (typeof d.path.get() !== "undefined") {
-  //       // add endpoints
+      toSubscribe = await createEndpoints(
+        d,
+        deviceNode,
+        containers,
+        DeviceEndpointDictionary,
+        EndpointDictionary,
+        i
+      );
 
-  //       toSubscribe = await createEndpoints(
-  //         d,
-  //         deviceNode,
-  //         containers,
-  //         DeviceEndpointDictionary,
-  //         EndpointDictionary,
-  //         i
-  //       );
-
-  //       // network.subscribe(toSubscribe, updateValues);
-  //     }
-  // }
+      network.subscribe(toSubscribe, updateValues);
+    }
+  }
 };
+
+async function updateValues(endpointObjects) {
+  let endpoints = [];
+  let histories = [];
+  let newValues = [];
+
+  for (var i = 0; i < endpointObjects.length; i++) {
+    let endpoint = endpointObjects[i];
+
+    let endpointNode = EndpointDictionary[endpoint.path.hashCode()];
+
+    let v = endpoint.value;
+
+    newValues.push(v);
+
+    endpoints.push(endpointNode.getElement());
+
+    let endpointHistory = await endpointNode.getChildren(["hasHistory"]);
+
+    if (endpointHistory.length == 1)
+      histories.push(endpointHistory[0].getElement());
+    //else
+    // TODO: create history and push?
+  }
+
+  return Promise.all(endpoints).then(_endpoints => {
+    for (var i = 0; i < _endpoints.length; i++)
+      _endpoints[i].currentValue.set(newValues[i]);
+
+    return Promise.all(histories)
+      .then(timeSeries => {
+        for (var i = 0; i < timeSeries.length; i++) {
+          console.log(newValues[i])
+          timeSeries[i].addToTimeSeries(newValues[i]);
+        }
+      })
+      .catch(console.log);
+  });
+}

@@ -6,7 +6,7 @@ module.exports = {
     path: '/VirtualNetwork',
     virtualDevices: 5,
     endpointsPerDevice: 3,
-    updateInterval: 1000
+    updateInterval: 5000
   },
   spinalConnector: {
     user: 168,
