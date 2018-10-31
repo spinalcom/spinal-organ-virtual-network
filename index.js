@@ -158,7 +158,7 @@ let createDevices = async function(
 
     var deviceChildren = await deviceNode.getChildren(["hasBeenLoaded"]);
 
-    dictionaries.push(deviceChildren);
+    dictionaries.push(await deviceChildren[0].getElement());
   }
   return dictionaries;
 };
@@ -174,6 +174,7 @@ let createEndpoints = async function(
   let toSubscribe = [];
   for (var j = 0; j < argcontainers[iterationCount].endpoints.length; j++) {
     let endpoint = argcontainers[iterationCount].endpoints[j];
+
     let hashedId = endpoint.path.get().hashCode();
 
     if (
@@ -197,7 +198,7 @@ let createEndpoints = async function(
         });
       }
 
-      DeviceEndpointDictionary[d.path.get().hashCode()][0].add_attr({
+      DeviceEndpointDictionary[d.path.get().hashCode()].add_attr({
         [hashedId]: endpointNode
       });
     }
@@ -286,6 +287,7 @@ let buildNetwork = async function(_graph) {
   }
 };
 
+
 async function updateValues(endpointObjects) {
   let endpoints = [];
   let histories = [];
@@ -317,7 +319,6 @@ async function updateValues(endpointObjects) {
     return Promise.all(histories)
       .then(timeSeries => {
         for (var i = 0; i < timeSeries.length; i++) {
-          console.log(newValues[i])
           timeSeries[i].addToTimeSeries(newValues[i]);
         }
       })
