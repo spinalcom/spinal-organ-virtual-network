@@ -14,6 +14,6 @@
     "spinal-models-building-elements": "git+https://github.com/spinalcom/spinal-models-building-elements.git",
     "spinal-models-timeSeries": "git+https://github.com/spinalcom/spinal-models-timeSeries.git",
     "spinalcore": "^2.1.0",
-    "spinalgraph": "file:///home/spinalcom/Desktop/libs/spinal-model-graph"
+    "spinalgraph": "git+https://github.com/spinalcom/spinal-model-graph.git"
   }
 }
