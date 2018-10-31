@@ -16,6 +16,6 @@ module.exports = {
     protocol: 'http'
   },
   file: {
-    path: '/__users__/admin/s'
+    path: '/__users__/admin/VirtualNetwork'
   }
 }

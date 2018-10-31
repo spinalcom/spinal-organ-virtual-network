@@ -10,9 +10,9 @@
     "fast-csv": "^2.4.1",
     "q": "^1.5.1",
     "spinal-lib-forgefile": "git+https://github.com/spinalcom/spinal-lib-forgefile.git",
-    "spinal-models-bmsNetwork": "file:///home/spinalcom/Desktop/libs/spinal-models-bmsNetwork",
-    "spinal-models-building-elements": "file:///home/spinalcom/Desktop/libs/spinal-models-building-elements",
-    "spinal-models-timeSeries": "file:///home/spinalcom/Desktop/libs/spinal-models-timeSeries",
+    "spinal-models-bmsNetwork": "git+https://github.com/spinalcom/spinal-models-bmsNetwork.git",
+    "spinal-models-building-elements": "git+https://github.com/spinalcom/spinal-models-building-elements.git",
+    "spinal-models-timeSeries": "git+https://github.com/spinalcom/spinal-models-timeSeries.git",
     "spinalcore": "^2.1.0",
     "spinalgraph": "file:///home/spinalcom/Desktop/libs/spinal-model-graph"
   }

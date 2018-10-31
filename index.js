@@ -2,13 +2,10 @@ let organType = typeof window === "undefined" ? global : window;
 
 var Q = require("q");
 var spinalCore = require("spinal-core-connectorjs");
-// require("spinal-lib-forgefile");
+var forgeFile = require("spinal-lib-forgefile");
 var config = require("./config");
 
 var spinalgraph = require("spinalgraph");
-// var SpinalDevice = require("spinal-models-bmsNetwork").SpinalDevice;
-// var SpinalEndpoint = require("spinal-models-bmsNetwork").SpinalEndpoint;
-// var SpinalNetwork = require("spinal-models-bmsNetwork").SpinalNetwork;
 
 const {
   SpinalDevice,
@@ -114,14 +111,28 @@ let createOrGetContext = async function(_graph) {
   });
 };
 
-//LoadFile
-spinalCore.load(conn, config.file.path, (_file) => {
+
+let getFileAnCreateNetwork = (_file) => {
   wait_for_endround(_file).then(() => {
     getGraph(_file).then(_graph => {
       buildNetwork(_graph);
     });
   });
+}
+
+
+//LoadFile
+spinalCore.load(conn, config.file.path, (_file) => {
+  getFileAnCreateNetwork(_file);
+},() => {
+  var _file = new forgeFile.ForgeFileItem();
+  spinalCore.store(conn,_file,config.file.path,() => {
+    getFileAnCreateNetwork(_file)
+  })
 });
+
+
+
 
 let createDevices = async function(
   networkNode,
