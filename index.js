@@ -1,4 +1,4 @@
-let organType = typeof window === "undefined" ? global : window;
+
 var spinalgraph = require("spinalgraph");
 
 var Q = require("q");
@@ -6,11 +6,7 @@ var spinalCore = require("spinal-core-connectorjs");
 var forgeFile = require("spinal-lib-forgefile");
 var config = require("./config");
 
-
-
-const {
-  SpinalNetwork
-} = require("spinal-models-bmsNetwork");
+const { SpinalNetwork } = require("spinal-models-bmsNetwork");
 
 var TimeSeries = require("spinal-models-timeSeries").TimeSeries;
 
@@ -27,28 +23,12 @@ String.prototype.hashCode = function() {
   return hash;
 };
 
-const connect_opt =
-  `http://${config.spinalConnector.user}:${
+const connect_opt = `http://${config.spinalConnector.user}:${
   config.spinalConnector.password
 }@${config.spinalConnector.host}:${config.spinalConnector.port}/`;
 
 var conn = spinalCore.connect(connect_opt);
 
-// FileSystem._disp = true;
-
-let wait_for_endround = file => {
-  let deferred = Q.defer();
-  return wait_for_endround_loop(file, deferred);
-};
-
-let wait_for_endround_loop = (_file, defer) => {
-  if (organType.FileSystem._sig_server === false) {
-    setTimeout(() => {
-      defer.resolve(wait_for_endround_loop(_file, defer));
-    }, 100);
-  } else defer.resolve(_file);
-  return defer.promise;
-};
 
 /**
  * This function create a graph if don't exist, get it if exist and return it;
@@ -59,12 +39,10 @@ let getGraph = _file => {
 
     var _graph = new spinalgraph.SpinalGraph();
 
-    wait_for_endround(_graph).then(() => {
-      _file.add_attr({
-        graph: _graph
-      });
-      resolve(_graph);
+    _file.add_attr({
+      graph: _graph
     });
+    resolve(_graph);
   });
 
   return _graph;
@@ -79,16 +57,6 @@ let createOrGetContext = async function(_graph) {
       if (typeof context !== "undefined") {
         return resolve(context);
       }
-
-      // /**** A supprimer */
-      // var contexts = await _graph.getChildren(["hasContext"]);
-
-      // for(var i = 0; i < contexts.length; i++) {
-      //   if(contexts[i].info.name.get() == config.networkConnector.appName) {
-      //     return resolve(contexts[i])
-      //   }
-      // }
-      // /*** Fin Suppression */
 
       var network = new SpinalNetwork(config.networkConnector);
 
@@ -111,29 +79,27 @@ let createOrGetContext = async function(_graph) {
   });
 };
 
-
-let getFileAnCreateNetwork = (_file) => {
-  wait_for_endround(_file).then(() => {
-    getGraph(_file).then(_graph => {
-      buildNetwork(_graph);
-    });
+let getFileAnCreateNetwork = _file => {
+  getGraph(_file).then(_graph => {
+    buildNetwork(_graph);
   });
-}
-
+};
 
 //LoadFile
-spinalCore.load(conn, config.file.path, (_file) => {
-  getFileAnCreateNetwork(_file);
-}, () => {
-  var _file = new forgeFile.ForgeFileItem();
+spinalCore.load(
+  conn,
+  config.file.path,
+  _file => {
+    getFileAnCreateNetwork(_file);
+  },
+  () => {
+    var _file = new forgeFile.ForgeFileItem();
 
-  spinalCore.store(conn, _file, config.file.path, () => {
-    getFileAnCreateNetwork(_file)
-  })
-});
-
-
-
+    spinalCore.store(conn, _file, config.file.path, () => {
+      getFileAnCreateNetwork(_file);
+    });
+  }
+);
 
 let createDevices = async function(
   networkNode,
@@ -151,7 +117,7 @@ let createDevices = async function(
     if (typeof DeviceDictionary[d.path.get().hashCode()] == "undefined") {
       deviceNode = new spinalgraph.SpinalNode("SpinalNode", "SpinalNode", d);
 
-      networkNode.addChild(deviceNode, "hasDevice", 0);
+      networkNode.addChild(deviceNode, "hasDevice", "Ref");
 
       DeviceDictionary.add_attr({
         [d.path.get().hashCode()]: deviceNode
@@ -160,13 +126,13 @@ let createDevices = async function(
 
     deviceNode = DeviceDictionary[d.path.get().hashCode()];
 
-    if (!deviceNode.hasRelation("hasBeenLoaded", 0)) {
+    if (!deviceNode.hasRelation("hasBeenLoaded", "Ref")) {
       deviceNode.addChild(
         new Model({
           type: "SpinalDevice"
         }),
         "hasBeenLoaded",
-        0
+        "Ref"
       );
     }
 
@@ -195,11 +161,13 @@ let createEndpoints = async function(
       typeof DeviceEndpointDictionary[d.path.get().hashCode()][hashedId] ==
       "undefined"
     ) {
-      let endpointNode = new spinalgraph.SpinalNode("SpinalNode",
+      let endpointNode = new spinalgraph.SpinalNode(
         "SpinalNode",
-        endpoint);
+        "SpinalNode",
+        endpoint
+      );
 
-      deviceNode.addChild(endpointNode, "hasEndpoint", 0);
+      deviceNode.addChild(endpointNode, "hasEndpoint", "Ref");
 
       let timeSeriesNode = new spinalgraph.SpinalNode(
         "SpinalNode",
@@ -207,7 +175,7 @@ let createEndpoints = async function(
         new TimeSeries()
       );
 
-      endpointNode.addChild(timeSeriesNode, "hasHistory", 0);
+      endpointNode.addChild(timeSeriesNode, "hasHistory", "Ref");
 
       if (typeof EndpointDictionary[hashedId] === "undefined") {
         EndpointDictionary.add_attr({
@@ -241,9 +209,9 @@ let buildNetwork = async function(_graph) {
 
   configs.push(await networkNode.getElement());
 
-  if (!networkNode.hasRelation("hasBeenLoaded", 0)) {
-    networkNode.addChild(new Model(), "hasBeenLoaded", 0);
-    networkNode.addChild(new Model(), "hasBeenLoaded", 0);
+  if (!networkNode.hasRelation("hasBeenLoaded", "Ref")) {
+    networkNode.addChild(new Model(), "hasBeenLoaded", "Ref");
+    networkNode.addChild(new Model(), "hasBeenLoaded", "Ref");
   }
 
   var child = await networkNode.getChildren(["hasBeenLoaded"]);
@@ -303,7 +271,6 @@ let buildNetwork = async function(_graph) {
     }
   }
 };
-
 
 async function updateValues(endpointObjects) {
   let endpoints = [];
