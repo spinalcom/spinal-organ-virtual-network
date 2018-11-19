@@ -115,7 +115,7 @@ let createDevices = async function(
     let deviceNode;
 
     if (typeof DeviceDictionary[d.path.get().hashCode()] == "undefined") {
-      deviceNode = new spinalgraph.SpinalNode("SpinalNode", "SpinalNode", d);
+      deviceNode = new spinalgraph.SpinalNode(d.name, "SpinalNode", d);
 
       networkNode.addChild(deviceNode, "hasDevice", "Ref");
 
@@ -162,7 +162,7 @@ let createEndpoints = async function(
       "undefined"
     ) {
       let endpointNode = new spinalgraph.SpinalNode(
-        "SpinalNode",
+        endpoint.name.get(),
         "SpinalNode",
         endpoint
       );
